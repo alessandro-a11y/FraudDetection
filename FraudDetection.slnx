@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="FraudDetection.API/FraudDetection.API.csproj" />
+  <Project Path="FraudDetection.Application/FraudDetection.Application.csproj" />
+  <Project Path="FraudDetection.Domain/FraudDetection.Domain.csproj" />
+  <Project Path="FraudDetection.Infrastructure/FraudDetection.Infrastructure.csproj" />
+  <Project Path="FraudDetection.Worker/FraudDetection.Worker.csproj" />
+</Solution>
