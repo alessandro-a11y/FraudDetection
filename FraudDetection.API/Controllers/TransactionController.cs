@@ -1,11 +1,13 @@
 using FraudDetection.Application.DTOs;
 using FraudDetection.Application.UseCases;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FraudDetection.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/transaction")]  // versionado
+[Authorize]                    // JWT obrigatório
 public class TransactionController : ControllerBase
 {
     private readonly CreateTransactionUseCase _useCase;
