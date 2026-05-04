@@ -1,19 +1,62 @@
 using FraudDetection.API.Configuration;
-using FraudDetection.API.Configuration;
+using FraudDetection.Infrastructure.Data;
+using FraudDetection.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+try
+{
+    Log.Information("Iniciando FraudDetection API...");
 
-builder.Services.AddProjectDependencies();
+    var builder = WebApplication.CreateBuilder(args);
 
-var app = builder.Build();
+    // Serilog como logger principal
+    builder.Host.UseSerilog((context, services, configuration) =>
+        configuration.ReadFrom.Configuration(context.Configuration));
 
-app.UseSwagger();
-app.UseSwaggerUI();
+    builder.Services.AddControllers();
+    builder.Services.AddOpenApi();
+    builder.Services.AddProjectDependencies(builder.Configuration);
 
-app.MapControllers();
+    var app = builder.Build();
 
-app.Run();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Database.Migrate();
+
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        foreach (var role in new[] { "Admin", "User" })
+        {
+            if (!await roleManager.RoleExistsAsync(role))
+                await roleManager.CreateAsync(new IdentityRole(role));
+        }
+    }
+
+    app.MapOpenApi();
+
+    // Loga cada request automaticamente
+    app.UseSerilogRequestLogging(options =>
+    {
+        options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} respondeu {StatusCode} em {Elapsed:0.0000}ms";
+    });
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.MapControllers();
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "API encerrada inesperadamente.");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
