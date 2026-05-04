@@ -1,26 +1,32 @@
 using FraudDetection.Domain.Entities;
 using FraudDetection.Domain.Interfaces;
+using FraudDetection.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace FraudDetection.Infrastructure.Repositories;
 
 public class TransactionRepository : ITransactionRepository
 {
-    private static readonly List<Transaction> _storage = new();
+    private readonly AppDbContext _context;
 
-    public Task AddAsync(Transaction transaction)
+    public TransactionRepository(AppDbContext context)
     {
-        _storage.Add(transaction);
-        return Task.CompletedTask;
+        _context = context;
     }
 
-    public Task<List<Transaction>> GetRecentByUserAsync(string userId, TimeSpan interval)
+    public async Task AddAsync(Transaction transaction)
+    {
+        await _context.Transactions.AddAsync(transaction);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<List<Transaction>> GetRecentByUserAsync(string userId, TimeSpan interval)
     {
         var cutoff = DateTime.UtcNow - interval;
 
-        var result = _storage
+        return await _context.Transactions
             .Where(t => t.UserId == userId && t.CreatedAt >= cutoff)
-            .ToList();
-
-        return Task.FromResult(result);
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
     }
 }
