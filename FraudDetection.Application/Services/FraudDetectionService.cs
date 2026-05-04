@@ -1,5 +1,6 @@
 using FraudDetection.Domain.Entities;
 using FraudDetection.Domain.Interfaces;
+using FraudDetection.Domain.Rules;
 using Microsoft.Extensions.Logging;
 
 namespace FraudDetection.Application.Services;
@@ -23,19 +24,28 @@ public class FraudDetectionService
             transaction.UserId,
             TimeSpan.FromMinutes(1));
 
-        if (recent.Count >= 3)
+        // Monta as regras dinamicamente
+        var rules = new List<IFraudRule>
         {
-            _logger.LogWarning(
-                "Velocidade suspeita detectada: usuário {UserId} fez {Count} transações no último minuto.",
-                transaction.UserId, recent.Count);
+            new HighAmountRule(),
+            new LocationMismatchRule(),
+            new VelocityRule(recent)
+        };
 
-            typeof(Transaction)
-                .GetProperty("RiskScore")!
-                .SetValue(transaction, transaction.RiskScore + 20);
-        }
+        var engine = new FraudRuleEngine(rules);
+        var score = engine.Evaluate(transaction);
+
+        transaction.ApplyRiskScore(score);
 
         _logger.LogInformation(
             "Transação {TransactionId} analisada: RiskScore={RiskScore}, RiskLevel={RiskLevel}",
             transaction.Id, transaction.RiskScore, transaction.RiskLevel);
+
+        if (transaction.RiskLevel == Domain.Enums.FraudRiskLevel.HIGH)
+        {
+            _logger.LogWarning(
+                "FRAUDE DETECTADA: Usuário {UserId} | Score={RiskScore} | Location={Location} | Amount={Amount}",
+                transaction.UserId, transaction.RiskScore, transaction.Location, transaction.Amount);
+        }
     }
 }
