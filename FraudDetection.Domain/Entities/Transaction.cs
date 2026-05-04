@@ -21,28 +21,11 @@ public class Transaction
         Amount = amount;
         Location = location;
         CreatedAt = DateTime.UtcNow;
-
-        EvaluateRisk();
     }
 
-    private void EvaluateRisk()
+    public void ApplyRiskScore(int score)
     {
-        int score = 0;
-
-        // Regra 1: valor alto
-        if (Amount > 5000)
-            score += 40;
-
-        // Regra 2: valor muito alto
-        if (Amount > 10000)
-            score += 30;
-
-        // Regra 3: localização suspeita
-        if (Location != "BR")
-            score += 30;
-
         RiskScore = score;
-
         RiskLevel = score switch
         {
             <= 30 => FraudRiskLevel.LOW,
